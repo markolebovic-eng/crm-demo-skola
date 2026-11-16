@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Demo CRM za upise</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap" rel="stylesheet">
+<style>
+/* Plan: školski plavi/žuti identitet. Jedna svetla tema (namerno), tamnoplavi bočni meni,
+   svetli tirkizni akcenat za pozadine, žuta samo za primarne radnje i oznake faza.
+   Raspored: bočna navigacija + radna površina; sažetak pre detalja; Fraunces za naslove i velike brojeve, Figtree za tekst. */
+:root{
+  --navy:#0f2d57; --navy-2:#1b4580; --sun:#ffb81c; --sun-soft:#fff3d1; --mist:#e2f3f4; --paper:#f3f8f9;
+  --card:#ffffff; --ink:#14263d; --muted:#5a6a7d; --line:#d8e3e7; --line-2:#e8eff1;
+  --good:#0ca30c; --good-ink:#006300; --warn:#fab219; --crit:#d03b3b; --crit-ink:#a82a2a;
+  --c1:#2a78d6; --c2:#1c5cab; --c3:#184f95;
+  --display:"Fraunces", Georgia, "Times New Roman", serif;
+  --body:"Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: light;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--paper);color:var(--ink);font-family:var(--body);font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased}
+button,select,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--navy);outline-offset:2px;border-radius:4px}
+.side :focus-visible,.demobar :focus-visible{outline-color:var(--sun)}
+h1,h2,h3{margin:0;font-weight:600;text-wrap:balance}
+h1{font-family:var(--display);font-size:26px;line-height:1.15}
+h2{font-size:15px}
+h3{font-size:13px}
+.num{font-variant-numeric:tabular-nums}
+
+/* demo traka */
+.demobar{position:sticky;top:0;z-index:30;background:var(--sun);color:#2a1d00;padding:6px 16px;font-size:12.5px;font-weight:600;display:flex;gap:10px;align-items:center;min-height:34px}
+.demobar .tag{background:var(--navy);color:#fff;border-radius:4px;padding:1px 7px;font-size:11.5px;letter-spacing:.04em}
+
+.shell{display:grid;grid-template-columns:236px minmax(0,1fr);min-height:calc(100% - 34px)}
+.side{background:var(--navy);color:#d9e5f3;padding:18px 12px;position:sticky;top:34px;height:calc(100vh - 34px);overflow:auto;display:flex;flex-direction:column;gap:14px}
+.brand{display:flex;gap:10px;align-items:center;padding:2px 8px 10px}
+.brand svg{flex:none}
+.brand b{display:block;font-family:var(--display);font-size:18px;font-weight:600;color:#fff;line-height:1.1}
+.brand span{font-size:12px;color:#9fb6d3}
+.nav{display:flex;flex-direction:column;gap:2px}
+.nav a{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;color:#d9e5f3;text-decoration:none;font-weight:500;position:relative}
+.nav a:hover{background:rgba(255,255,255,.07)}
+.nav a[aria-current="page"]{background:rgba(255,255,255,.12);color:#fff}
+.nav a[aria-current="page"]::before{content:"";position:absolute;left:-12px;top:8px;bottom:8px;width:4px;border-radius:0 3px 3px 0;background:var(--sun)}
+.nav svg{width:18px;height:18px;flex:none;opacity:.9}
+.nav .badge{margin-left:auto;background:var(--sun);color:#2a1d00;border-radius:10px;padding:0 7px;font-size:11.5px;font-weight:700}
+.nav .ph{margin-left:auto;border:1px solid rgba(255,255,255,.35);border-radius:4px;padding:0 5px;font-size:10.5px;color:#cfe0f3;white-space:nowrap}
+.me{margin-top:auto;display:flex;gap:10px;align-items:center;padding:10px;border-top:1px solid rgba(255,255,255,.12)}
+.avatar{width:32px;height:32px;border-radius:50%;background:var(--mist);color:var(--navy);display:grid;place-items:center;font-weight:700;font-size:12px;flex:none}
+.me small{display:block;color:#9fb6d3}
+
+.main{min-width:0;display:flex;flex-direction:column}
+.top{display:flex;gap:16px;align-items:center;justify-content:space-between;padding:18px 28px 6px;flex-wrap:wrap}
+.top .crumb{color:var(--muted);font-size:12.5px;margin-bottom:2px}
+.lang{display:inline-flex;border:1.5px solid var(--navy);border-radius:999px;padding:2px;background:#fff}
+.lang button{border:0;background:none;padding:4px 14px;border-radius:999px;font-weight:700;color:var(--navy);font-size:13px}
+.lang button[aria-pressed="true"]{background:var(--navy);color:#fff}
+#view{padding:12px 28px 40px;display:flex;flex-direction:column;gap:18px;outline:none}
+
+/* kartice i osnovne komponente */
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px}
+.card > header{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line-2)}
+.card .body{padding:14px 16px}
+.grid2{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:18px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+.stack{display:flex;flex-direction:column;gap:18px}
+.muted{color:var(--muted)}
+.small{font-size:12.5px}
+.btn{border:1px solid var(--navy);background:#fff;color:var(--navy);border-radius:8px;padding:5px 12px;font-weight:600;font-size:13px}
+.btn:hover{background:var(--mist)}
+.btn.primary{background:var(--sun);border-color:var(--sun);color:#2a1d00}
+.btn.primary:hover{background:#ffc84d}
+.btn.sm{padding:2px 9px;font-size:12.5px}
+.btn.ghost{border-color:var(--line)}
+.link{background:none;border:0;padding:0;color:var(--navy);font-weight:600;text-decoration:underline;text-underline-offset:2px;text-align:left}
+
+/* KPI traka: jedna povezana celina */
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.kpis.k3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.kpi{padding:14px 18px;border-right:1px solid var(--line-2);min-width:0}
+.kpi:last-child{border-right:0}
+.kpi .l{color:var(--muted);font-size:12.5px;font-weight:500}
+.kpi .v{font-family:var(--display);font-size:32px;font-weight:600;line-height:1.1;margin:4px 0 2px;color:var(--navy)}
+.kpi .v small{font-family:var(--body);font-size:14px;font-weight:600;color:var(--muted);margin-left:4px}
+.kpi .h{font-size:12.5px;color:var(--muted)}
+.kpi.alert .v{color:var(--crit-ink)}
+
+/* pilule i oznake */
+.pill{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:1px 9px;font-size:12px;font-weight:600;white-space:nowrap;background:var(--mist);color:var(--navy)}
+.pill i{width:7px;height:7px;border-radius:50%;background:currentColor;display:inline-block}
+.st-new{background:#d7eef0;color:#0b4a52}
+.st-contacted{background:#dbe8f8;color:#173f73}
+.st-visit_scheduled{background:var(--sun-soft);color:#6b4600}
+.st-visited{background:#c9dcf4;color:#123566}
+.st-applied{background:#1b4580;color:#fff}
+.st-enrolled{background:#d9f2d9;color:var(--good-ink)}
+.st-lost{background:#e7ebee;color:#4a5866}
+.chan{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink)}
+.chan i{width:8px;height:8px;border-radius:2px;background:var(--navy-2);display:inline-block}
+.over{color:var(--crit-ink);font-weight:700;display:inline-flex;gap:4px;align-items:center}
+.phase{display:flex;gap:10px;align-items:flex-start;background:var(--sun-soft);border:1px solid #f1d58a;border-left:5px solid var(--sun);border-radius:8px;padding:10px 14px;color:#4a3300}
+.phase b{white-space:nowrap}
+
+/* tabele */
+.tbl{width:100%;border-collapse:collapse}
+.tbl th{text-align:left;font-size:12px;color:var(--muted);font-weight:600;padding:8px 14px;border-bottom:1px solid var(--line);white-space:nowrap;background:#fbfdfd}
+.tbl td{padding:9px 14px;border-bottom:1px solid var(--line-2);vertical-align:middle}
+.tbl tr:last-child td{border-bottom:0}
+.tbl tbody tr.click{cursor:pointer}
+.tbl tbody tr.click:hover{background:#f6fbfb}
+.tbl td.r,.tbl th.r{text-align:right}
+.scroll{overflow-x:auto}
+.nw{white-space:nowrap}
+.ell{max-width:420px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.toolbar input,.toolbar select{border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 10px;min-height:32px}
+.toolbar input{min-width:240px}
+
+/* liste */
+.list{list-style:none;margin:0;padding:0}
+.list li{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--line-2)}
+.list li:last-child{border-bottom:0}
+.list .t{min-width:0}
+.list .t > *{display:block}
+.list .t b,.list .t .link{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.list .t b{font-weight:700}
+
+/* pregled */
+.lead{margin:0;font-size:16px;max-width:70ch}
+.row{display:flex;gap:12px;align-items:center;flex:none}
+.list li.vis{justify-content:flex-start;gap:14px}
+.date{width:46px;flex:none;border-radius:8px;background:var(--mist);color:var(--navy);display:flex;flex-direction:column;align-items:center;padding:4px 0;line-height:1.15}
+.date b{font-family:var(--display);font-size:20px;font-weight:600}
+.date small{font-size:11.5px}
+
+.season{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
+.season > div{padding:14px 18px;border-right:1px solid var(--line-2);display:flex;flex-direction:column;gap:6px;min-width:0}
+.season > div:last-child{border-right:0}
+.season .l{color:var(--muted);font-size:12.5px;font-weight:500}
+.season .v{font-family:var(--display);font-size:32px;font-weight:600;line-height:1.1;color:var(--navy)}
+.season .v small{font-family:var(--body);font-size:16px;color:var(--muted)}
+.season .h{font-size:12.5px;color:var(--muted)}
+.season{grid-template-columns:minmax(0,1fr) minmax(0,2fr)}
+.prog{height:10px;background:#edf3f5;border-radius:5px;overflow:hidden;display:flex;gap:2px}
+.prog span{display:block;height:100%;background:var(--sun)}
+.prog span.ap{background:#ffe08f}
+.prog span.cur{background:#9fb6d3}
+.legend i.cur{background:#9fb6d3}
+.prog.sm{height:8px;flex:1}
+.legend{display:flex;gap:14px;font-size:12px;color:var(--muted);margin-top:2px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--sun);margin-right:5px;vertical-align:-1px}
+.legend i.ap{background:#ffe08f}
+.season .grades{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(4,auto);grid-auto-flow:column;gap:10px 28px;align-content:center}
+.gr{display:flex;align-items:center;gap:10px;font-size:13px}
+.gl{width:62px;flex:none}
+.gv{width:52px;text-align:right;font-weight:600;flex:none;white-space:nowrap}
+@media (max-width:820px){.season,.season .grades{grid-template-columns:1fr}.season > div{border-right:0;border-bottom:1px solid var(--line-2)}}
+
+/* pipeline */
+.board{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(158px,1fr);gap:10px;overflow-x:auto;padding-bottom:8px;align-items:start}
+.col{background:#edf4f5;border-radius:10px;padding:8px;min-height:140px;display:flex;flex-direction:column;gap:8px}
+.col.over-drop{outline:2px dashed var(--navy);outline-offset:-2px}
+.col h3{display:flex;justify-content:space-between;align-items:center;padding:4px 6px 6px;color:var(--navy)}
+.col h3 span{color:var(--muted);font-size:12.5px;font-weight:600}
+.col[data-stage="enrolled"] h3{color:var(--good-ink)}
+.pcard .src{font-size:12px;color:var(--muted)}
+.pcard{background:#fff;border:1px solid var(--line);border-radius:8px;padding:10px 12px;cursor:grab;display:flex;flex-direction:column;gap:3px;text-align:left;width:100%}
+.pcard:hover{border-color:#9fb6d3}
+.pcard:active{cursor:grabbing}
+.pcard .n{font-weight:700;color:var(--navy);line-height:1.25}
+.pcard .meta{display:flex;justify-content:space-between;gap:6px;align-items:center;color:var(--muted);font-size:12px}
+.pcard.dragging{opacity:.5}
+.pcard .reason{font-size:12px;color:#4a5866}
+.pcard.stage-enrolled{border-left:4px solid var(--good)}
+.pcard.stage-lost{border-left:4px solid #9aa8b5}
+
+/* profil */
+.prhead{display:flex;gap:16px;justify-content:space-between;align-items:flex-start;flex-wrap:wrap}
+.kv{display:grid;grid-template-columns:150px 1fr;gap:6px 12px;margin:0}
+.kv dt{color:var(--muted)}
+.kv dd{margin:0}
+.parent{display:flex;gap:12px;justify-content:space-between;align-items:flex-start;padding:12px 16px;border-bottom:1px solid var(--line-2);flex-wrap:wrap}
+.parent:last-child{border-bottom:0}
+.parent .acts{display:flex;gap:6px}
+.tl{list-style:none;margin:0;padding:6px 16px 12px;position:relative}
+.tl li{display:grid;grid-template-columns:14px 1fr auto;gap:10px;padding:8px 0;position:relative}
+.tl li::before{content:"";position:absolute;left:6px;top:20px;bottom:-8px;width:2px;background:var(--line)}
+.tl li:last-child::before{display:none}
+.tl .dot{width:14px;height:14px;border-radius:50%;background:#fff;border:3px solid var(--navy-2);margin-top:3px;position:relative;z-index:1}
+.note{background:var(--mist);border-radius:8px;padding:10px 12px;color:#0b4a52}
+select.stagesel{border:1px solid var(--navy);border-radius:8px;padding:5px 8px;background:#fff;font-weight:600;color:var(--navy)}
+
+/* grafici */
+.bars{display:flex;flex-direction:column;gap:9px}
+.bar{display:grid;grid-template-columns:minmax(120px,170px) minmax(0,1fr) 150px;gap:12px;align-items:center}
+.bar .lab{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar .track{height:14px;background:#edf3f5;border-radius:3px;position:relative}
+.bar .fill{position:absolute;left:0;top:0;bottom:0;border-radius:0 3px 3px 0;background:var(--c1);min-width:2px}
+.bar:hover .fill,.bar:focus .fill{background:var(--c3)}
+.bar .val{font-weight:700;min-width:70px;text-align:right}
+.bar .val small{font-weight:500;color:var(--muted);margin-left:5px}
+.cols{display:flex;align-items:flex-end;gap:6px;height:170px;padding-top:10px;border-bottom:1px solid var(--line)}
+.colw{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:4px;height:100%;min-width:0}
+.colw .b{width:100%;max-width:34px;background:var(--c1);border-radius:3px 3px 0 0;min-height:2px}
+.colw:hover .b,.colw:focus .b{background:var(--c3)}
+.colw .cv{font-size:12px;font-weight:700}
+.axis{display:flex;gap:6px;margin-top:6px;color:var(--muted);font-size:11.5px}
+.axis span{flex:1;text-align:center;min-width:0;white-space:nowrap;overflow:visible}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line)}
+.tabs button{border:0;background:none;padding:8px 14px;font-weight:600;color:var(--muted);border-bottom:3px solid transparent;margin-bottom:-1px}
+.tabs button[aria-selected="true"]{color:var(--navy);border-bottom-color:var(--sun)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#fff}
+.seg button{border:0;background:none;padding:5px 12px;font-weight:600;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--navy);color:#fff}
+
+/* prekidač */
+.sw{position:relative;width:38px;height:22px;border-radius:12px;background:#b9c6d0;border:0;flex:none;vertical-align:middle;margin-right:6px}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left .15s}
+.sw[aria-checked="true"]{background:var(--navy-2)}
+.sw[aria-checked="true"]::after{left:19px}
+
+/* tooltip, toast, modal */
+#tip{position:fixed;z-index:60;background:var(--navy);color:#fff;border-radius:8px;padding:7px 10px;font-size:12.5px;pointer-events:none;opacity:0;max-width:260px;box-shadow:0 6px 20px rgba(15,45,87,.25)}
+#tip.on{opacity:1}
+#toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--navy);color:#fff;border-radius:10px;padding:9px 16px;font-weight:600;z-index:70;opacity:0;pointer-events:none;transition:opacity .15s}
+#toast.on{opacity:1}
+.modal-bg{position:fixed;inset:0;background:rgba(15,45,87,.45);z-index:80;display:grid;place-items:center;padding:16px}
+.modal{background:#fff;border-radius:12px;padding:20px;max-width:380px;width:100%;display:flex;flex-direction:column;gap:12px}
+.modal .opts{display:flex;flex-direction:column;gap:6px}
+.chk{width:18px;height:18px;accent-color:var(--navy)}
+.done{text-decoration:line-through;color:var(--muted)}
+.codebox{background:#0f2d57;color:#dbe8f8;border-radius:8px;padding:12px 14px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;overflow-x:auto;white-space:pre}
+.integ{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
+.integ div{border:1px solid var(--line);border-radius:8px;padding:10px 12px;display:flex;justify-content:space-between;gap:8px;align-items:center}
+.sr-only{position:absolute;left:-9999px}
+
+@media (max-width: 1000px){
+  .grid2,.grid3{grid-template-columns:1fr}
+  .kpis,.kpis.k3{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .kpi:nth-child(2){border-right:0}
+  .kpi:nth-child(-n+2){border-bottom:1px solid var(--line-2)}
+}
+@media (max-width: 820px){
+  .shell{grid-template-columns:1fr}
+  .side{position:static;height:auto;flex-direction:column;padding:10px}
+  .nav{flex-direction:row;overflow-x:auto;padding-bottom:4px}
+  .nav a{white-space:nowrap}
+  .nav a[aria-current="page"]::before{display:none}
+  .me{display:none}
+  .top,#view{padding-left:16px;padding-right:16px}
+  .kv{grid-template-columns:1fr}
+  .bar{grid-template-columns:90px minmax(0,1fr) 112px}
+  .bar .val small{display:block;margin:0}
+  .toolbar input{min-width:0;flex:1}
+}
+@media (prefers-reduced-motion: reduce){
+  .sw::after,#toast{transition:none}
+}
+</style>
+</head>
+<body>
+<div class="demobar" role="note"><span class="tag">DEMO</span><span id="demotext"></span></div>
+<div class="shell">
+  <aside class="side" id="side" aria-label="Navigacija"></aside>
+  <div class="main">
+    <header class="top" id="top"></header>
+    <main id="view" tabindex="-1"></main>
+  </div>
+</div>
+<div id="tip" role="tooltip"></div>
+<div id="toast" role="status" aria-live="polite"></div>
+<div id="modal"></div>
+
+<script>
+(function(){
+'use strict';
+
+/* ---------- Jezik ---------- */
+const L = {
+sr:{
+ htmlLang:'sr', locale:'sr-Latn-RS',
+ demoText:'Izmišljeni podaci. Ovo je prikaz funkcija koje predlažemo, a ne funkcionalan sistem.',
+ brandSub:'Upisi', role:'Osoblje za upise', navLabel:'Navigacija', langLabel:'Jezik',
+ phase:{1:'Faza 1',2:'Faza 2',3:'Faza 3'},
+ phase2:'Pregled funkcije iz Faze 2. Nije deo prve verzije.',
+ phase3:'Pregled funkcije iz Faze 3. Nije deo prve verzije.',
+ nav:{overview:'Pregled',inquiries:'Upiti',students:'Učenici',pipeline:'Pipeline upisa',events:'Posete i događaji',campaigns:'Kampanje',comms:'Komunikacija',analytics:'Analitika',tasks:'Zadaci',settings:'Podešavanja'},
+ stage:{new:'Novi upit',contacted:'Kontaktiran',visit_scheduled:'Zakazana poseta',visited:'Posetio školu',applied:'Prijava',enrolled:'Upisan',lost:'Izgubljen'},
+ chan:{google_ads:'Google oglasi',meta:'Meta oglasi',linkedin:'LinkedIn',seo:'Google pretraga (SEO)',chatbot:'Chatbot',leadmagnet:'Lead magnet (email)'},
+ reason:{price:'Cena',location:'Lokacija',other_school:'Izabrao/la drugu školu',no_reply:'Nije odgovorio/la',other:'Drugo'},
+ rel:{mother:'Majka',father:'Otac',guardian:'Staratelj'},
+ childOf:'Porodica {s}', gradeN:'{n}. razred', ago_now:'upravo', ago_h:'pre {n} h', ago_d:'pre {n} d', in_d:'za {n} d', in_h:'za {n} h',
+ unassigned:'Nedodeljen', open:'Otvori', call:'Pozovi', email:'Mejl', cancel:'Otkaži', back:'Nazad na učenike', demoAction:'Demo: ova radnja nije aktivna.',
+ ov:{season:'Sezona upisa 2027/28', custom:'Prilagodljivo', customTip:'Sadržaj ovog bloka biramo sa školom.', goal:'Popunjena mesta', goalHint:'Novih upisa {e}, prijava u obradi {a}, slobodno {f} mesta.', lgCur:'Nastavljaju', lgEnr:'Novi upisi', lgApp:'Prijava u obradi', gradeTip:'nastavljaju {c}, novi upisi {e}, prijave {a}, slobodno {f}', new7:'Novi upiti, 7 dana', new7Hint:'prethodnih 7 dana: {n}', summary:'Upiti bez odgovora: {w}, od toga {o} duže od 24 h. Posete u narednih 7 dana: {v}.', lateHint:'{n} duže od 24 h', visits7:'Posete, narednih 7 dana', visitsHint7:'zakazane posete školi', next:'Ko čeka odgovor', allInq:'Svi upiti', title:'Pregled', new7:'Novi upiti, 7 dana', wait:'Čeka prvi odgovor', waitHint:'najduže {h} h', waitNone:'nema čekanja', visits:'Predstojeće posete', visitsHint:'zakazano u narednih 10 dana', enrolled:'Upisano ove sezone', enrolledHint:'od {n} upita',
+   waiting:'Upiti koji čekaju odgovor', waitingEmpty:'Svi upiti imaju odgovor.', upcoming:'Predstojeće posete', todayTasks:'Zadaci za danas', pipe:'Pipeline u brojkama', over24:'preko 24 h', allTasks:'Svi zadaci', allPipe:'Otvori pipeline'},
+ inq:{tabOpen:'Čekaju odgovor ({n})', tabAll:'Svi upiti', title:'Upiti', time:'Stiglo', parent:'Roditelj', channel:'Kanal', campaign:'Kampanja', message:'Poruka', status:'Status', assigned:'Dodeljen: {n}', note:'Svi kanali stižu na jedno mesto. Poruke roditelja ostaju na jeziku na kom su napisane.'},
+ stu:{title:'Učenici', search:'Pretraga po imenu ili roditelju', all:'Sve faze', student:'Učenik', grade:'Razred', year:'Šk. godina', stage:'Faza', parent:'Roditelj', source:'Izvor', owner:'Odgovoran', activity:'Poslednja aktivnost', count:'{n} učenika'},
+ pr:{parents:'Roditelji i staratelji', primary:'Primarni kontakt', consent:'Saglasnost', consentLine:'{d} · {s} · tekst {v}', mktYes:'Marketinške poruke: da', mktNo:'Marketinške poruke: odjavljen', lang:'Jezik komunikacije',
+   source:'Upit i izvor', channel:'Kanal', campaign:'Kampanja', utm:'UTM oznake', received:'Stiglo', owner:'Odgovoran', firstReply:'Prvi odgovor', hours:'{n} h posle upita',
+   timeline:'Istorija aktivnosti', tasks:'Zadaci', noTasks:'Nema otvorenih zadataka.', minTitle:'Minimalni podaci o detetu', min:'Dok ne stigne prijava, čuvamo samo razred i školsku godinu. Ime i ostali podaci se unose posle prijave.',
+   after:'Podaci posle prijave', dob:'Datum rođenja', school:'Trenutna škola', schoolVal:'Državna škola, Novi Sad', siblings:'Isti roditelj, drugo dete', changeStage:'Promeni fazu', reason:'Razlog gubitka', child:'Dete', gradeYear:'Razred i školska godina', visit:'Poseta'},
+ ev:{inquiry:'Stigao upit preko kanala: {c}', auto:'Poslat mejl dobrodošlice (automatski)', call:'Prvi poziv: {n}', booked:'Zakazana poseta: {d}', done:'Poseta održana', follow:'Poslat follow-up mejl (automatski)', applied:'Stigla prijava', enrolled:'Dete upisano', lost:'Zatvoreno kao izgubljeno: {r}'},
+ task:{call:'Pozvati roditelja', slot:'Predložiti termin posete', confirm:'Potvrditi posetu', offer:'Poslati informacije o školarini', docs:'Proveriti dokumentaciju za upis'},
+ due:{today:'Danas', tomorrow:'Sutra', week:'Ove nedelje'},
+ pipe:{title:'Pipeline upisa', hint:'Prevuci karticu u drugu fazu.', showLost:'Prikaži izgubljene ({n})', hideLost:'Sakrij izgubljene', allSrc:'Svi kanali', allOwn:'Svi odgovorni', lostTitle:'Zašto je upis izgubljen?', moved:'Premešteno: {s}'},
+ evt:{title:'Posete i događaji', openDay:'Dan otvorenih vrata', infoEve:'Info veče za roditelje prvaka', visit:'Poseta školi', registered:'{n} od {m} prijavljeno', booked:'Zakazano', upcoming:'Predstojeći termini', note:'Posete se zakazuju iz profila učenika ili preko forme na sajtu. Roditelj dobija potvrdu i podsetnike automatski.'},
+ camp:{title:'Kampanje', sub:'Zadnjih 90 dana', spend:'Ukupan trošak', leads:'Upiti', enr:'Upisi', cpe:'Prosečna cena po upisu', name:'Kampanja', cs:'Trošak', cpl:'Cena po upitu', cpeCol:'Cena po upisu', chart:'Cena po upisu po kanalu', noEnr:'Nema upisa', note:'Trošak se uvozi iz oglasnih naloga ili unosi ručno. Upisi dolaze iz pipeline-a.', period:'Period'},
+ com:{title:'Komunikacija', auto:'Automatizacije', tpl:'Šabloni', bot:'Chatbot razgovori', newAuto:'Nova automatizacija', trigger:'Okidač', timing:'Vreme', audience:'Primaoci', template:'Šablon', sent:'Poslato, 30 dana', opened:'Otvoreno', active:'Aktivno', paused:'Pauzirano', parents:'Roditelji', staff:'Osoblje', tplName:'Šablon', langs:'Jezici', edited:'Izmenjeno', botNote:'Razgovori ostaju na jeziku roditelja. Svaki razgovor sa ostavljenim kontaktom postaje upit.', botTo:'Pretvoreno u upit', botNo:'Odgovoreno bez upita', parentSays:'Roditelj', botSays:'Chatbot'},
+ an:{title:'Analitika', period:'Zadnjih 90 dana · sezona 2027/28', tabOv:'Pregled', tabAttr:'Attribution', inq:'Upiti', enr:'Upisi', conv:'Upit u upis', resp:'Vreme do prvog odgovora', respUnit:'h prosečno', week:'Upiti po nedeljama', src:'Upiti po izvoru', funnel:'Tok upisa', lost:'Razlozi gubitka', convLabel:'{p}% u upis', ofPrev:'{p}% prethodne faze', weekOf:'Nedelja od {d}', path:'Putevi do upisa', model:'Model zasluge', mFirst:'Prvi dodir', mLast:'Poslednji dodir', mLinear:'Ravnomerno', credit:'Zasluga za upise', family:'Put porodice', route:'Kanali do upisa', days:'Dana do upisa', attrNote:'Koji kanal zapravo donosi upise zavisi od modela. Platforma prikazuje sve tri slike jednu pored druge.', enrolments:'upisa'},
+ tsk:{title:'Zadaci', empty:'Nema zadataka.', for:'Za'},
+ set:{title:'Podešavanja', forms:'Forme i chatbot', formsText:'Ugradi formu za upit i chatbot na sajt škole. Svaki upit nosi izvor i UTM oznake.', integ:'Integracije', connected:'Povezano', site:'Sajt škole (forma, chatbot)', users:'Korisnici i uloge', role:'Uloga', access:'Pristup',
+   roles:[['Administrator (agencija)','Sve, uključujući integracije i podešavanja.'],['Direktor škole','Pregled, analitika i kampanje (samo čitanje), upisi.'],['Osoblje za upise','Upiti, učenici, pipeline, zadaci i posete. Bez kampanja i podešavanja.']],
+   consent:'Saglasnosti', current:'Aktuelna', consentText:'Verzije teksta saglasnosti. Svaki roditelj ima zapisan datum, izvor i verziju.', audit:'Evidencija izmena', auditRows:[['pre 12 min','Ivana Đorđević','Promenila fazu učenika: Kontaktiran u Zakazana poseta'],['pre 1 h','Ivana Đorđević','Dodala beleška uz poziv roditelja'],['pre 3 h','Nemanja Pavlović','Dodelio upit sebi'],['juče','Administrator','Uključio automatizaciju: Podsetnik 2 dana pre posete'],['juče','Administrator','Novi tekst saglasnosti, verzija 1.1']]}
+},
+en:{
+ htmlLang:'en', locale:'en-GB',
+ demoText:'Sample data. This shows the features we propose; it is not a working system.',
+ brandSub:'Admissions', role:'Admissions staff', navLabel:'Navigation', langLabel:'Language',
+ phase:{1:'Phase 1',2:'Phase 2',3:'Phase 3'},
+ phase2:'Preview of a Phase 2 feature. Not part of the first version.',
+ phase3:'Preview of a Phase 3 feature. Not part of the first version.',
+ nav:{overview:'Overview',inquiries:'Inquiries',students:'Students',pipeline:'Enrolment pipeline',events:'Visits & events',campaigns:'Campaigns',comms:'Communication',analytics:'Analytics',tasks:'Tasks',settings:'Settings'},
+ stage:{new:'New inquiry',contacted:'Contacted',visit_scheduled:'Visit scheduled',visited:'Visited school',applied:'Application',enrolled:'Enrolled',lost:'Lost'},
+ chan:{google_ads:'Google Ads',meta:'Meta Ads',linkedin:'LinkedIn',seo:'Google search (SEO)',chatbot:'Chatbot',leadmagnet:'Lead magnet (email)'},
+ reason:{price:'Price',location:'Location',other_school:'Chose another school',no_reply:'No reply',other:'Other'},
+ rel:{mother:'Mother',father:'Father',guardian:'Guardian'},
+ childOf:'{s} family', gradeN:'Grade {n}', ago_now:'just now', ago_h:'{n} h ago', ago_d:'{n} d ago', in_d:'in {n} d', in_h:'in {n} h',
+ unassigned:'Unassigned', open:'Open', call:'Call', email:'Email', cancel:'Cancel', back:'Back to students', demoAction:'Demo: this action is not active.',
+ ov:{season:'2027/28 admissions season', custom:'Customisable', customTip:'We choose what this block shows together with the school.', goal:'Places filled', goalHint:'New enrolments {e}, applications in progress {a}, {f} places free.', lgCur:'Continuing', lgEnr:'New enrolments', lgApp:'Application in progress', gradeTip:'continuing {c}, new enrolments {e}, applications {a}, free {f}', new7:'New inquiries, 7 days', new7Hint:'previous 7 days: {n}', summary:'Inquiries without a reply: {w}, of which {o} for over 24 h. Visits in the next 7 days: {v}.', lateHint:'{n} for over 24 h', visits7:'Visits, next 7 days', visitsHint7:'booked school visits', next:'Waiting for a reply', allInq:'All inquiries', title:'Overview', new7:'New inquiries, 7 days', wait:'Awaiting first reply', waitHint:'longest {h} h', waitNone:'nothing waiting', visits:'Upcoming visits', visitsHint:'booked in the next 10 days', enrolled:'Enrolled this season', enrolledHint:'from {n} inquiries',
+   waiting:'Inquiries waiting for a reply', waitingEmpty:'Every inquiry has a reply.', upcoming:'Upcoming visits', todayTasks:'Today’s tasks', pipe:'Pipeline at a glance', over24:'over 24 h', allTasks:'All tasks', allPipe:'Open pipeline'},
+ inq:{tabOpen:'Waiting for a reply ({n})', tabAll:'All inquiries', title:'Inquiries', time:'Received', parent:'Parent', channel:'Channel', campaign:'Campaign', message:'Message', status:'Status', assigned:'Assigned: {n}', note:'All channels arrive in one place. Parents’ messages stay in the language they were written in.'},
+ stu:{title:'Students', search:'Search by name or parent', all:'All stages', student:'Student', grade:'Grade', year:'School year', stage:'Stage', parent:'Parent', source:'Source', owner:'Owner', activity:'Last activity', count:'{n} students'},
+ pr:{parents:'Parents and guardians', primary:'Primary contact', consent:'Consent', consentLine:'{d} · {s} · text {v}', mktYes:'Marketing messages: yes', mktNo:'Marketing messages: opted out', lang:'Communication language',
+   source:'Inquiry and source', channel:'Channel', campaign:'Campaign', utm:'UTM tags', received:'Received', owner:'Owner', firstReply:'First reply', hours:'{n} h after the inquiry',
+   timeline:'Activity history', tasks:'Tasks', noTasks:'No open tasks.', minTitle:'Minimal child data', min:'Until an application arrives, we keep only the grade and school year. Name and other details are entered after the application.',
+   after:'Data after application', dob:'Date of birth', school:'Current school', schoolVal:'State school, Novi Sad', siblings:'Same parent, other child', changeStage:'Change stage', reason:'Reason lost', child:'Child', gradeYear:'Grade and school year', visit:'Visit'},
+ ev:{inquiry:'Inquiry received via: {c}', auto:'Welcome email sent (automatic)', call:'First call: {n}', booked:'Visit scheduled: {d}', done:'Visit completed', follow:'Follow-up email sent (automatic)', applied:'Application received', enrolled:'Child enrolled', lost:'Closed as lost: {r}'},
+ task:{call:'Call the parent', slot:'Offer a visit slot', confirm:'Confirm the visit', offer:'Send tuition information', docs:'Check enrolment documents'},
+ due:{today:'Today', tomorrow:'Tomorrow', week:'This week'},
+ pipe:{title:'Enrolment pipeline', hint:'Drag a card to another stage.', showLost:'Show lost ({n})', hideLost:'Hide lost', allSrc:'All channels', allOwn:'All owners', lostTitle:'Why was this enrolment lost?', moved:'Moved to: {s}'},
+ evt:{title:'Visits & events', openDay:'Open day', infoEve:'Info evening for first-grade parents', visit:'School visit', registered:'{n} of {m} registered', booked:'Booked', upcoming:'Upcoming', note:'Visits are booked from a student profile or through the form on the website. The parent gets a confirmation and reminders automatically.'},
+ camp:{title:'Campaigns', sub:'Last 90 days', spend:'Total spend', leads:'Inquiries', enr:'Enrolments', cpe:'Average cost per enrolment', name:'Campaign', cs:'Spend', cpl:'Cost per inquiry', cpeCol:'Cost per enrolment', chart:'Cost per enrolment by channel', noEnr:'No enrolments', note:'Spend is imported from ad accounts or entered by hand. Enrolments come from the pipeline.', period:'Period'},
+ com:{title:'Communication', auto:'Automations', tpl:'Templates', bot:'Chatbot chats', newAuto:'New automation', trigger:'Trigger', timing:'Timing', audience:'Audience', template:'Template', sent:'Sent, 30 days', opened:'Opened', active:'Active', paused:'Paused', parents:'Parents', staff:'Staff', tplName:'Template', langs:'Languages', edited:'Edited', botNote:'Chats stay in the parent’s language. Any chat that leaves contact details becomes an inquiry.', botTo:'Turned into an inquiry', botNo:'Answered, no inquiry', parentSays:'Parent', botSays:'Chatbot'},
+ an:{title:'Analytics', period:'Last 90 days · 2027/28 season', tabOv:'Overview', tabAttr:'Attribution', inq:'Inquiries', enr:'Enrolments', conv:'Inquiry to enrolment', resp:'Time to first reply', respUnit:'h on average', week:'Inquiries per week', src:'Inquiries by source', funnel:'Enrolment funnel', lost:'Reasons lost', convLabel:'{p}% enrolled', ofPrev:'{p}% of previous stage', weekOf:'Week of {d}', path:'Paths to enrolment', model:'Credit model', mFirst:'First touch', mLast:'Last touch', mLinear:'Even split', credit:'Credit for enrolments', family:'Family path', route:'Channels to enrolment', days:'Days to enrol', attrNote:'Which channel really brings enrolments depends on the model. The platform shows all three views side by side.', enrolments:'enrolments'},
+ tsk:{title:'Tasks', empty:'No tasks.', for:'For'},
+ set:{title:'Settings', forms:'Forms and chatbot', formsText:'Embed the inquiry form and chatbot on the school website. Each inquiry carries its source and UTM tags.', integ:'Integrations', connected:'Connected', site:'School website (form, chatbot)', users:'Users and roles', role:'Role', access:'Access',
+   roles:[['Administrator (agency)','Everything, including integrations and settings.'],['School director','Overview, analytics and campaigns (read only), enrolments.'],['Admissions staff','Inquiries, students, pipeline, tasks and visits. No campaigns or settings.']],
+   consent:'Consents', current:'Current', consentText:'Versions of the consent text. Each parent has a recorded date, source and version.', audit:'Audit log', auditRows:[['12 min ago','Ivana Đorđević','Changed a student’s stage: Contacted to Visit scheduled'],['1 h ago','Ivana Đorđević','Added a note to a parent call'],['3 h ago','Nemanja Pavlović','Assigned an inquiry to himself'],['yesterday','Administrator','Turned on automation: Reminder 2 days before a visit'],['yesterday','Administrator','New consent text, version 1.1']]}
+}};
+const AUTOS = [
+ {on:true, sent:38, open:71, aud:'parents', tpl:'welcome_inquiry', sr:{n:'Dobrodošlica za novi upit', d:'Roditelj odmah dobija potvrdu i sledeći korak.', tr:'Novi upit', tm:'Odmah'}, en:{n:'Welcome for a new inquiry', d:'The parent gets a confirmation and the next step at once.', tr:'New inquiry', tm:'Immediately'}},
+ {on:true, sent:9, open:100, aud:'staff', tpl:'staff_reminder_24h', sr:{n:'Upit bez odgovora 24 h', d:'Osoblju stiže zadatak i obaveštenje.', tr:'Upit bez odgovora', tm:'24 h posle upita'}, en:{n:'Inquiry without reply after 24 h', d:'Staff get a task and a notification.', tr:'Inquiry without reply', tm:'24 h after the inquiry'}},
+ {on:true, sent:21, open:84, aud:'parents', tpl:'visit_confirmation', sr:{n:'Potvrda posete', d:'Datum, vreme, adresa i kontakt osobe.', tr:'Poseta zakazana', tm:'Odmah'}, en:{n:'Visit confirmation', d:'Date, time, address and contact person.', tr:'Visit scheduled', tm:'Immediately'}},
+ {on:true, sent:19, open:79, aud:'parents', tpl:'visit_reminder_2d', sr:{n:'Podsetnik 2 dana pre posete', d:'Kratak podsetnik sa uputstvom kako do škole.', tr:'Pre posete', tm:'2 dana pre'}, en:{n:'Reminder 2 days before a visit', d:'A short reminder with directions to the school.', tr:'Before a visit', tm:'2 days before'}},
+ {on:true, sent:19, open:88, aud:'parents', tpl:'visit_reminder_3h', sr:{n:'Podsetnik 3 h pre posete', d:'Poslednji podsetnik istog dana.', tr:'Pre posete', tm:'3 h pre'}, en:{n:'Reminder 3 h before a visit', d:'A last reminder on the same day.', tr:'Before a visit', tm:'3 h before'}},
+ {on:true, sent:14, open:76, aud:'parents', tpl:'visit_followup', sr:{n:'Follow-up posle posete', d:'Zahvalnica, informacije o školarini i prijavi.', tr:'Poseta održana', tm:'1 dan posle'}, en:{n:'Follow-up after a visit', d:'Thanks, plus tuition and application details.', tr:'Visit completed', tm:'1 day after'}},
+ {on:true, sent:6, open:67, aud:'parents', tpl:'application_nudge', sr:{n:'Podsetnik za prijavu', d:'Za porodice koje su posetile školu, a nisu se prijavile.', tr:'Poseta bez prijave', tm:'7 dana posle posete'}, en:{n:'Application reminder', d:'For families who visited but have not applied.', tr:'Visit without application', tm:'7 days after the visit'}},
+ {on:false, sent:0, open:0, aud:'parents', tpl:'guide_series_3', sr:{n:'Vodič za upis, serija od 3 mejla', d:'Za kontakte koji su preuzeli vodič.', tr:'Preuzet lead magnet', tm:'Dan 1, 3 i 7'}, en:{n:'Admissions guide, 3-email series', d:'For contacts who downloaded the guide.', tr:'Lead magnet downloaded', tm:'Day 1, 3 and 7'}},
+ {on:true, sent:6, open:92, aud:'parents', tpl:'welcome_enrolled', sr:{n:'Dobrodošlica za upisane', d:'Informacije o početku godine i potrebnoj dokumentaciji.', tr:'Dete upisano', tm:'Odmah'}, en:{n:'Welcome for enrolled families', d:'Start-of-year details and required documents.', tr:'Child enrolled', tm:'Immediately'}}
+];
+const TEMPLATES = [
+ ['welcome_inquiry','SR, EN','pre 6 dana|6 days ago'],['visit_confirmation','SR, EN','pre 12 dana|12 days ago'],['visit_reminder_2d','SR, EN','pre 12 dana|12 days ago'],['visit_followup','SR, EN','pre 3 nedelje|3 weeks ago'],['application_nudge','SR','pre 3 nedelje|3 weeks ago'],['welcome_enrolled','SR, EN','pre mesec dana|a month ago']
+];
+const BOT = [
+ {q:'Dobar dan, kolika je školarina za prvi razred i da li postoji produženi boravak?', a:'Školarinu i uslove boravka objašnjava osoblje za upise. Ostavite broj telefona i javićemo se još danas.', to:true},
+ {q:'Do kada se prima prijava za sledeću školsku godinu?', a:'Prijave se primaju tokom cele godine, dok ima mesta. Za tačan broj slobodnih mesta po razredu ostavite kontakt.', to:true},
+ {q:'Gde se nalazi škola i ima li parkinga?', a:'Škola je u Dositejevoj 15 u Novom Sadu. Možete zakazati posetu i dobiti uputstvo kako do nas.', to:false}
+];
+const SPEC = 'Ge Ge Gd Ga Gc Gx Gv Gn Gx Me Ma Md Mv Mv Mc Mc Mn Mn Mx Mx Lc Lx Ln Se Sa Sd Sv Sc Sc Sn Sx Ce Cd Cv Cc Cn Ca Ee Ea Ed Ec En'.split(' ');
+const SRC = {G:'google_ads',M:'meta',L:'linkedin',S:'seo',C:'chatbot',E:'leadmagnet'};
+const STG = {n:'new',c:'contacted',v:'visit_scheduled',d:'visited',a:'applied',e:'enrolled',x:'lost'};
+const ORDER = ['new','contacted','visit_scheduled','visited','applied','enrolled'];
+const STAGES = ORDER.concat(['lost']);
+const MESSAGES = [
+ 'Zanima me upis deteta u prvi razred za sledeću godinu. Kolika je školarina?',
+ 'Želela bih da vidim školu pre nego što se odlučimo. Kada možemo da dođemo?',
+ 'Imamo dvoje dece, da li postoji popust za drugo dete?',
+ 'Da li imate produženi boravak i ishranu?',
+ 'Zanima nas prelazak u peti razred od septembra.',
+ 'Molim vas za informacije o programu i broju dece u odeljenju.',
+ 'Da li je moguć upis usred školske godine?',
+ 'Preuzela sam vodič za upis, imam još nekoliko pitanja.'
+];
+
+/* ---------- Izmišljeni podaci (generisani, uvek isti) ---------- */
+function rng(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const rnd = rng(2027);
+const pick = a => a[Math.floor(rnd()*a.length)];
+const rint = (a,b) => a+Math.floor(rnd()*(b-a+1));
+const SUR = ['Petrović','Jovanović','Kovačević','Marković','Ilić','Popović','Nikolić','Stojanović','Todorović','Vasić','Lazić','Milošević','Radić','Simić','Pavlović','Đurić','Savić','Babić','Knežević','Tomić','Mitrović','Bogdanović','Ristić','Cvetković','Obradović','Janković','Maksimović','Zdravković','Lukić','Dimitrijević','Živković','Veselinović','Perić','Aćimović','Rakić','Filipović','Stanković','Milenković','Vukičević'];
+const FEM = ['Marija','Jelena','Ana','Milica','Ivana','Tamara','Jovana','Nataša','Snežana','Dragana','Katarina','Sanja'];
+const MAL = ['Nemanja','Stefan','Dušan','Aleksandar','Nikola','Vladimir','Miloš','Bojan','Zoran','Dejan','Ognjen','Vuk'];
+const KID = ['Luka','Lena','Sara','Mihailo','Teodora','Vuk','Anja','Filip','Mila','Andrej','Katarina','Lazar','Nina','Pavle','Ema','Đorđe','Jovana','Uroš','Tara','Stefan','Iva','Relja'];
+const STAFF = ['Ivana Đorđević','Nemanja Pavlović'];
+const ascii = s => s.normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/đ/g,'dj').replace(/Đ/g,'Dj').toLowerCase();
+const LOSTAFTER = [1,3,1,2,1,3], LOSTWHY = ['price','other_school','no_reply','location','price','other_school'];
+const PATHS = [['google_ads','leadmagnet','google_ads'],['google_ads'],['meta','meta','leadmagnet'],['seo','google_ads','chatbot'],['chatbot','leadmagnet'],['leadmagnet','seo']];
+const PDAYS = [34,21,47,52,18,39];
+const SIBLINGS = [[0,6],[9,16],[31,35]];
+const H = 3600*1000;
+const NOW = Date.now();
+
+const FAM = [], PARENTS = {}, STUDENTS = [];
+let pid = 1, lostN = 0, enrN = 0;
+SPEC.forEach((code, i) => {
+  const src = SRC[code[0]], stage = STG[code[1]];
+  const sib = SIBLINGS.find(p => p[1] === i);
+  let fam;
+  if (sib) { fam = STUDENTS[sib[0]].fam; }
+  else {
+    const sur = i === 0 ? 'Petrović' : SUR[(i*7 + 3) % SUR.length];
+    const mother = i === 0 ? 'Marija' : null;
+    const f = {id:'f'+(FAM.length+1), sur, parents:[]};
+    const fem = rnd() < .62;
+    const first = mother || (fem ? pick(FEM) : pick(MAL));
+    const rel = fem || mother ? 'mother' : 'father';
+    const p1 = mkParent(f, first, rel, true);
+    if (rnd() < .3 || i === 0) { const other = rel === 'mother' ? pick(MAL) : pick(FEM); mkParent(f, other, rel === 'mother' ? 'father' : 'mother', false); }
+    FAM.push(f); fam = f;
+  }
+  const createdH = ({new:rint(2,70), contacted:rint(3*24,20*24), visit_scheduled:rint(5*24,25*24), visited:rint(10*24,40*24), applied:rint(20*24,50*24), enrolled:rint(35*24,86*24), lost:rint(15*24,80*24)})[stage];
+  let grade = i === 0 ? 3 : (i === 6 ? 1 : pick([1,1,1,2,2,3,3,4,5,5,6,7,8]));
+  const kidName = i === 0 ? 'Luka' : pick(KID);
+  const known = stage === 'applied' || stage === 'enrolled';
+  const s = {
+    id:'s'+String(i+1).padStart(2,'0'), fam, src, stage, grade, year: rnd() < .8 ? '2027/28' : '2026/27',
+    name: known ? kidName+' '+fam.sur : null, createdH,
+    owner: stage === 'new' ? null : pick(STAFF), respH: stage === 'new' ? null : rint(1,30),
+    msg: MESSAGES[i % MESSAGES.length], lostAfter:null, why:null, path:null, days:null, visitAt:null, visitedAt:null,
+    dob: known ? (rint(1,28)+'. '+rint(1,12)+'. '+(2027 - 6 - grade - (rnd()<.5?0:1))+'.') : null
+  };
+  if (stage === 'lost') { s.lostAfter = ORDER[LOSTAFTER[lostN]]; s.why = LOSTWHY[lostN]; lostN++; }
+  if (stage === 'enrolled') { s.path = PATHS[enrN]; s.days = PDAYS[enrN]; enrN++; }
+  if (stage === 'visit_scheduled') { const d = new Date(NOW + rint(1,9)*24*H); d.setHours(rint(9,16), pick([0,30]), 0, 0); s.visitAt = d.getTime(); }
+  if (stage === 'visited' || stage === 'applied' || stage === 'enrolled') s.visitedAt = NOW - rint(3, Math.max(4, Math.floor(createdH/24)-1))*24*H;
+  if (i === 6) s.name = null;
+  STUDENTS.push(s);
+});
+function mkParent(f, first, rel, primary){
+  const id = pid++;
+  const p = {id, first, last:f.sur, rel, primary, email: ascii(first)+'.'+ascii(f.sur)+'@example.com', phone:'+381 60 555 '+(1000+id*3), lang: rnd()<.15?'en':'sr', mkt: rnd()>.12};
+  f.parents.push(p); PARENTS[id] = p; return p;
+}
+const CAMPS = [
+ {id:'c1', src:'google_ads', name:'Upis 2027/28, pretraga', period:'sep – nov', spend:62000, budget:70000, utm:'google / cpc / upis-2027-28'},
+ {id:'c2', src:'meta', name:'Dan otvorenih vrata, lead forma', period:'okt – nov', spend:48500, budget:55000, utm:'meta / paid_social / dan-otvorenih-vrata'},
+ {id:'c3', src:'linkedin', name:'Roditelji, lokalni profesionalci', period:'okt – nov', spend:31000, budget:35000, utm:'linkedin / paid_social / roditelji-ns'},
+ {id:'c4', src:'seo', name:'Sadržaj i SEO/GEO optimizacija', period:'sep – nov', spend:36000, budget:36000, utm:'google / organic / seo-geo'},
+ {id:'c5', src:'chatbot', name:'Chatbot na sajtu', period:'sep – nov', spend:18000, budget:18000, utm:'sajt / chatbot / upisi'},
+ {id:'c6', src:'leadmagnet', name:'Vodič za upis i email serija', period:'okt – nov', spend:14500, budget:14500, utm:'email / lead_magnet / vodic-za-upis'}
+];
+const CAMPBY = {}; CAMPS.forEach(c => CAMPBY[c.src] = c);
+
+/* ---------- Pomoćne ---------- */
+let lang = 'sr';
+try { const s = localStorage.getItem('crm-demo-lang'); if (s === 'en' || s === 'sr') lang = s; } catch(e) {}
+const T = () => L[lang];
+const fmt = (s, v) => String(s).replace(/\{(\w+)\}/g, (m,k) => v && v[k] != null ? v[k] : m);
+const nf = n => new Intl.NumberFormat(T().locale).format(n);
+const money = n => nf(n) + ' RSD';
+const dfmt = (ts, o) => new Intl.DateTimeFormat(T().locale, o || {day:'numeric', month:'short'}).format(ts);
+const tfmt = ts => new Intl.DateTimeFormat(T().locale, {hour:'2-digit', minute:'2-digit'}).format(ts);
+const ago = h => h < 1 ? T().ago_now : h < 24 ? fmt(T().ago_h, {n:Math.round(h)}) : fmt(T().ago_d, {n:Math.round(h/24)});
+const inT = ts => { const h = (ts - NOW)/H; return h < 24 ? fmt(T().in_h, {n:Math.max(1,Math.round(h))}) : fmt(T().in_d, {n:Math.round(h/24)}); };
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]);
+const grade = s => fmt(T().gradeN, {n:s.grade});
+const sName = s => s.name ? s.name : fmt(T().childOf, {s:s.fam.sur});
+const pName = p => p.first + ' ' + p.last;
+const prim = s => s.fam.parents.find(p => p.primary);
+const owner = s => s.owner || T().unassigned;
+const waitH = s => s.stage === 'new' ? s.createdH : 0;
+const stagePill = st => '<span class="pill st-'+st+'"><i></i>'+esc(T().stage[st])+'</span>';
+const chanTag = c => '<span class="chan"><i></i>'+esc(T().chan[c])+'</span>';
+const iconOver = '<svg width="13" height="13" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5 15 14H1z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M8 6.5v3.5M8 12v.1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+const overTag = h => h > 24 ? '<span class="over">'+iconOver+esc(T().ov.over24)+'</span>' : '<span class="muted">'+ago(h)+'</span>';
+const lastAct = s => s.stage === 'new' ? s.createdH : Math.max(2, Math.round(s.createdH * (s.id.charCodeAt(2) % 5 + 1) / 9));
+function phaseNote(n){ return '<div class="phase" role="note"><b>'+T().phase[n]+'</b><span>'+T()['phase'+n]+'</span></div>'; }
+function tag(n){ return '<span class="pill" style="background:var(--sun-soft);color:#6b4600">'+T().phase[n]+'</span>'; }
+function toast(msg){ const el = document.getElementById('toast'); el.textContent = msg; el.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove('on'), 2200); }
+function demoAct(){ toast(T().demoAction); }
+const ICON = {
+ overview:'<path d="M3 11h6V3H3zM11 17h6V9h-6zM3 17h6v-4H3zM11 7h6V3h-6z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>',
+ inquiries:'<path d="M3 5h14v9H8l-4 3v-3H3z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>',
+ students:'<circle cx="10" cy="7" r="3" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M4 17c.5-3.5 3-5 6-5s5.500 1.500 6 5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>',
+ pipeline:'<path d="M3 4h4v12H3zM8 4h4v8H8zM13 4h4v5h-4z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>',
+ events:'<rect x="3" y="4.500" width="14" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M3 8.500h14M7 3v3M13 3v3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>',
+ campaigns:'<path d="M3 11v-2l11-5v12zM6 12l1 4h2l-1-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>',
+ comms:'<rect x="3" y="5" width="14" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m3.500 6.500 6.500 5 6.500-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>',
+ analytics:'<path d="M4 16V9M10 16V4M16 16v-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',
+ tasks:'<path d="m4 10 3.500 3.500L16 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
+ settings:'<circle cx="10" cy="10" r="2.500" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 3v2M10 15v2M3 10h2M15 10h2M5 5l1.500 1.500M13.500 13.500 15 15M15 5l-1.500 1.500M6.500 13.500 5 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>'
+};
+const NAVS = [['overview','pregled',1],['inquiries','upiti',1],['students','ucenici',1],['pipeline','pipeline',1],['events','posete',2],['campaigns','kampanje',2],['comms','komunikacija',2],['analytics','analitika',1],['tasks','zadaci',1],['settings','podesavanja',1]];
+
+/* ---------- Izvedeni brojevi ---------- */
+const stageIdx = s => s.stage === 'lost' ? ORDER.indexOf(s.lostAfter) : ORDER.indexOf(s.stage);
+const bySrc = src => STUDENTS.filter(s => s.src === src);
+const enrolled = () => STUDENTS.filter(s => s.stage === 'enrolled');
+function tasksFor(s){
+  const base = {new:['call','today'], contacted:['slot','tomorrow'], visit_scheduled:['confirm','tomorrow'], visited:['offer','week'], applied:['docs','week']}[s.stage];
+  return base ? [{k:base[0], due:base[1], s}] : [];
+}
+const ALLTASKS = STUDENTS.flatMap(tasksFor);
+const doneTasks = new Set();
+
+/* ---------- Ekrani ---------- */
+function viewOverview(){
+  const t = T().ov;
+  const waiting = STUDENTS.filter(s => s.stage === 'new').sort((a,b) => b.createdH - a.createdH);
+  const late = waiting.filter(s => s.createdH > 24).length;
+  const visits = STUDENTS.filter(s => s.stage === 'visit_scheduled').sort((a,b) => a.visitAt - b.visitAt);
+  const week = visits.filter(s => s.visitAt - NOW <= 7*24*H).length;
+  const new7 = STUDENTS.filter(s => s.createdH <= 7*24).length, prev7 = STUDENTS.filter(s => s.createdH > 7*24 && s.createdH <= 14*24).length;
+  return '<section class="kpis k3" aria-label="KPI">'
+   + kpi(t.new7, new7, fmt(t.new7Hint,{n:prev7}))
+   + kpi(t.wait, waiting.length, late ? fmt(t.lateHint,{n:late}) : t.waitNone, late > 0)
+   + kpi(t.visits7, week, t.visitsHint7)
+   + '</section>'
+   + '<div class="grid2">'
+   + '<section class="card"><header><h2>'+t.next+'</h2><button class="link" data-go="upiti">'+t.allInq+'</button></header>'
+   + (waiting.length ? '<ul class="list">'+waiting.slice(0,6).map(s => '<li><div class="t"><button class="link" data-go="ucenik-'+s.id+'">'+esc(sName(s))+'</button><span class="small muted">'+esc(grade(s))+' · '+esc(pName(prim(s)))+' · '+esc(T().chan[s.src])+'</span></div><div class="row">'+overTag(s.createdH)+'<button class="btn sm primary" data-demo>'+T().call+'</button></div></li>').join('')+'</ul>' : '<div class="body muted">'+t.waitingEmpty+'</div>')
+   + '</section>'
+   + '<section class="card"><header><h2>'+t.upcoming+'</h2><button class="link" data-go="posete">'+T().evt.title+'</button></header><ul class="list">'
+   + visits.slice(0,5).map(s => '<li class="vis">'+chip(s.visitAt)+'<div class="t"><button class="link" data-go="ucenik-'+s.id+'">'+esc(sName(s))+'</button><span class="small muted">'+tfmt(s.visitAt)+' · '+esc(pName(prim(s)))+'</span></div></li>').join('')
+   + '</ul></section>'
+   + '</div>'
+   + seasonBlock();
+}
+function seasonBlock(){
+  const t = T().ov, CAP = 18, CUR = {1:0,2:15,3:14,4:14,5:13,6:16,7:15,8:16};
+  const rows = [1,2,3,4,5,6,7,8].map(g => {
+    const e = STUDENTS.filter(s => s.grade === g && s.stage === 'enrolled').length;
+    const a = STUDENTS.filter(s => s.grade === g && s.stage === 'applied').length;
+    const c = CUR[g], cap = Math.max(CAP, c + e + a);
+    return {g, c, e, a, cap, f:cap - c - e - a};
+  });
+  const sum = k => rows.reduce((x,r) => x + r[k], 0);
+  const cap = sum('cap'), cur = sum('c'), en = sum('e'), ap = sum('a'), free = sum('f');
+  const bar = (r, cls) => '<span class="prog'+(cls||'')+'"><span class="cur" style="width:'+(r.c/r.cap*100)+'%"></span><span style="width:'+(r.e/r.cap*100)+'%"></span><span class="ap" style="width:'+(r.a/r.cap*100)+'%"></span></span>';
+  return '<section class="card"><header><h2>'+t.season+'</h2><span class="pill" title="'+esc(t.customTip)+'">'+t.custom+'</span></header><div class="season">'
+   + '<div><div class="l">'+t.goal+'</div><div class="v num">'+(cur+en)+'<small> / '+cap+'</small></div>'
+   +   bar({c:cur,e:en,a:ap,cap})
+   +   '<div class="h">'+fmt(t.goalHint,{e:en,a:ap,f:free})+'</div>'
+   +   '<div class="legend"><span><i class="cur"></i>'+t.lgCur+'</span><span><i></i>'+t.lgEnr+'</span><span><i class="ap"></i>'+t.lgApp+'</span></div></div>'
+   + '<div class="grades">'+rows.map(r => '<div class="gr" tabindex="0" data-tip="'+esc(fmt(T().gradeN,{n:r.g})+': '+fmt(t.gradeTip,{c:r.c,e:r.e,a:r.a,f:r.f}))+'"><span class="gl">'+esc(fmt(T().gradeN,{n:r.g}))+'</span>'+bar(r,' sm')+'<span class="gv num">'+(r.c+r.e)+' / '+r.cap+'</span></div>').join('')+'</div>'
+   + '</div></section>';
+}
+function chip(ts){ return '<span class="date"><b class="num">'+new Date(ts).getDate()+'</b><small>'+esc(dfmt(ts,{weekday:'short'}))+'</small></span>'; }
+function kpi(l, v, h, alert, unit){ return '<div class="kpi'+(alert?' alert':'')+'"><div class="l">'+esc(l)+'</div><div class="v num">'+v+(unit?'<small>'+esc(unit)+'</small>':'')+'</div><div class="h">'+esc(h)+'</div></div>'; }
+
+let inqTab = 'open';
+function viewInquiries(){
+  const t = T().inq;
+  const open = STUDENTS.filter(s => s.stage === 'new').sort((a,b) => b.createdH - a.createdH);
+  const all = STUDENTS.slice().sort((a,b) => a.createdH - b.createdH).slice(0,15);
+  const rows = inqTab === 'open' ? open : all;
+  return '<div class="tabs" role="tablist"><button role="tab" data-itab="open" aria-selected="'+(inqTab==='open')+'">'+fmt(t.tabOpen,{n:open.length})+'</button><button role="tab" data-itab="all" aria-selected="'+(inqTab==='all')+'">'+t.tabAll+'</button></div>'
+  + '<section class="card scroll"><table class="tbl"><thead><tr><th>'+t.parent+'</th><th>'+t.message+'</th><th>'+t.time+'</th><th>'+T().stu.owner+'</th><th></th></tr></thead><tbody>'
+  + rows.map(s => '<tr class="click" data-go="ucenik-'+s.id+'"><td><b>'+esc(pName(prim(s)))+'</b><div class="small muted nw">'+esc(grade(s))+' · '+esc(T().chan[s.src])+'</div></td>'
+     + '<td><div class="ell" title="'+esc(s.msg)+'">'+esc(s.msg)+'</div></td>'
+     + '<td class="nw">'+(s.stage==='new' ? overTag(s.createdH) : '<span class="muted">'+ago(s.createdH)+'</span>')+'</td>'
+     + '<td class="nw">'+(s.owner ? esc(s.owner) : '<span class="muted">'+esc(T().unassigned)+'</span>')+'</td>'
+     + '<td class="r">'+(s.stage==='new' ? '<button class="btn sm primary" data-demo>'+T().call+'</button>' : '<button class="btn sm" data-go="ucenik-'+s.id+'">'+T().open+'</button>')+'</td></tr>').join('')
+  + '</tbody></table></section>';
+}
+
+const flt = {q:'', stage:'', src:'', own:''};
+function viewStudents(){
+  const t = T().stu;
+  return '<div class="toolbar"><input id="fq" type="search" placeholder="'+esc(t.search)+'" value="'+esc(flt.q)+'" aria-label="'+esc(t.search)+'"><select id="fs" aria-label="'+t.stage+'"><option value="">'+t.all+'</option>'+STAGES.map(s => '<option value="'+s+'"'+(flt.stage===s?' selected':'')+'>'+esc(T().stage[s])+'</option>').join('')+'</select><span class="muted" id="fcount"></span></div>'
+  + '<section class="card scroll"><table class="tbl"><thead><tr><th>'+t.student+'</th><th>'+t.grade+'</th><th>'+t.stage+'</th><th>'+t.source+'</th><th>'+t.owner+'</th></tr></thead><tbody id="stbody"></tbody></table></section>';
+}
+function fillStudents(){
+  const q = flt.q.trim().toLowerCase();
+  const rows = STUDENTS.filter(s => (!flt.stage || s.stage === flt.stage) && (!q || (sName(s)+' '+s.fam.parents.map(pName).join(' ')).toLowerCase().includes(q)));
+  document.getElementById('fcount').textContent = fmt(T().stu.count, {n:rows.length});
+  document.getElementById('stbody').innerHTML = rows.map(s => '<tr class="click" data-go="ucenik-'+s.id+'"><td><b>'+esc(sName(s))+'</b><div class="small muted">'+esc(pName(prim(s)))+'</div></td><td class="nw">'+esc(grade(s))+'</td><td>'+stagePill(s.stage)+'</td><td class="nw muted">'+esc(T().chan[s.src])+'</td><td class="nw">'+(s.owner ? esc(s.owner) : '<span class="muted">'+esc(T().unassigned)+'</span>')+'</td></tr>').join('');
+}
+
+function timeline(s){
+  const e = T().ev, ev = [];
+  const created = NOW - s.createdH*H;
+  ev.push({t:created, text:fmt(e.inquiry,{c:T().chan[s.src]})});
+  ev.push({t:created + 60000, text:e.auto});
+  if (s.stage !== 'new') ev.push({t:created + s.respH*H, text:fmt(e.call,{n:s.owner})});
+  if (s.visitAt) ev.push({t:created + (s.respH+30)*H, text:fmt(e.booked,{d:dfmt(s.visitAt,{weekday:'short',day:'numeric',month:'short'})+', '+tfmt(s.visitAt)})});
+  if (s.visitedAt) { ev.push({t:s.visitedAt, text:e.done}); ev.push({t:s.visitedAt + 18*H, text:e.follow}); }
+  if (s.stage === 'applied' || s.stage === 'enrolled') ev.push({t:Math.min(NOW - 24*H, (s.visitedAt||created) + 6*24*H), text:e.applied});
+  if (s.stage === 'enrolled') ev.push({t:Math.min(NOW - 12*H, (s.visitedAt||created) + 12*24*H), text:e.enrolled});
+  if (s.stage === 'lost') ev.push({t:created + (s.createdH*.6)*H, text:fmt(e.lost,{r:T().reason[s.why]})});
+  return ev.filter(x => x.t <= NOW + 10*24*H).sort((a,b) => b.t - a.t);
+}
+function viewProfile(id){
+  const s = STUDENTS.find(x => x.id === id); if (!s) return '';
+  const p = T().pr, c = CAMPBY[s.src];
+  const sibs = STUDENTS.filter(x => x.fam === s.fam && x !== s);
+  const known = s.stage === 'applied' || s.stage === 'enrolled';
+  const tasks = tasksFor(s);
+  const created = NOW - s.createdH*H;
+  return '<div class="prhead"><div class="row"><button class="link small" data-go="ucenici">← '+T().back+'</button><span class="muted">'+esc(fmt(T().gradeN,{n:s.grade}))+' · '+s.year+'</span>'+stagePill(s.stage)+'</div>'
+  + '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><label class="small muted" for="stsel">'+p.changeStage+'</label><select id="stsel" class="stagesel">'+STAGES.map(x => '<option value="'+x+'"'+(x===s.stage?' selected':'')+'>'+esc(T().stage[x])+'</option>').join('')+'</select></div></div>'
+  + '<div class="grid2"><div class="stack">'
+  +  '<section class="card"><header><h2>'+p.parents+'</h2></header>'
+  +   s.fam.parents.map(pa => '<div class="parent"><div><b>'+esc(pName(pa))+'</b> <span class="muted">· '+esc(T().rel[pa.rel])+'</span>'+(pa.primary?' <span class="pill">'+p.primary+'</span>':'')
+        +'<div class="small" style="margin-top:4px">'+esc(pa.phone)+'<br>'+esc(pa.email)+'</div>'
+        +'<div class="small muted" style="margin-top:6px">✓ '+p.consent+' '+esc(dfmt(created))+' · '+(pa.mkt?p.mktYes:p.mktNo)+'</div></div>'
+        +'<div class="acts"><button class="btn sm" data-demo>'+T().call+'</button><button class="btn sm" data-demo>'+T().email+'</button></div></div>').join('')
+  +  '</section>'
+  +  '<section class="card"><header><h2>'+p.source+'</h2></header><div class="body"><dl class="kv">'
+  +   '<dt>'+p.received+'</dt><dd>'+dfmt(created,{day:'numeric',month:'long'})+' · '+ago(s.createdH)+'</dd>'
+  +   '<dt>'+p.channel+'</dt><dd>'+chanTag(s.src)+'</dd><dt>'+p.campaign+'</dt><dd>'+esc(c.name)+'</dd><dt>'+p.utm+'</dt><dd class="small" style="font-family:ui-monospace,Menlo,monospace">'+esc(c.utm)+'</dd>'
+  +   '<dt>'+p.owner+'</dt><dd>'+esc(owner(s))+'</dd>'
+  +   (s.respH != null ? '<dt>'+p.firstReply+'</dt><dd>'+esc(fmt(p.hours,{n:s.respH}))+'</dd>' : '')
+  +   (s.why ? '<dt>'+p.reason+'</dt><dd>'+esc(T().reason[s.why])+'</dd>' : '')
+  +  '</dl></div></section>'
+  +  '<section class="card"><header><h2>'+(known ? p.after : p.minTitle)+'</h2></header><div class="body">'
+  +   (known ? '<dl class="kv"><dt>'+p.child+'</dt><dd>'+esc(s.name)+'</dd><dt>'+p.dob+'</dt><dd>'+esc(s.dob)+'</dd><dt>'+p.school+'</dt><dd>'+esc(p.schoolVal)+'</dd></dl>' : '<div class="note">'+p.min+'</div>')
+  +  '</div></section>'
+  +  (sibs.length ? '<section class="card"><header><h2>'+p.siblings+'</h2></header><ul class="list">'+sibs.map(x => '<li><div class="t"><b>'+esc(sName(x))+'</b><span class="small muted">'+esc(grade(x))+'</span></div><div style="display:flex;gap:10px;align-items:center">'+stagePill(x.stage)+'<button class="btn sm" data-go="ucenik-'+x.id+'">'+T().open+'</button></div></li>').join('')+'</ul></section>' : '')
+  + '</div><div class="stack">'
+  +  '<section class="card"><header><h2>'+p.tasks+'</h2></header>'+(tasks.length ? '<ul class="list">'+tasks.map(x => '<li><div class="t"><b>'+esc(T().task[x.k])+'</b><span class="small muted">'+esc(T().due[x.due])+'</span></div><button class="btn sm" data-demo>✓</button></li>').join('')+'</ul>' : '<div class="body muted">'+p.noTasks+'</div>')+'</section>'
+  +  '<section class="card"><header><h2>'+p.timeline+'</h2></header><ul class="tl">'+timeline(s).map(x => '<li><span class="dot"></span><span>'+esc(x.text)+'</span><span class="small muted num">'+(x.t > NOW ? dfmt(x.t) : dfmt(x.t))+'</span></li>').join('')+'</ul></section>'
+  + '</div></div>';
+}
+
+const pf = {src:'', own:''};
+let showLost = false;
+function viewPipeline(){
+  const t = T().pipe, lostN = STUDENTS.filter(s => s.stage === 'lost').length;
+  return '<div class="toolbar"><select id="psrc" aria-label="'+t.allSrc+'"><option value="">'+t.allSrc+'</option>'+Object.keys(T().chan).map(c => '<option value="'+c+'"'+(pf.src===c?' selected':'')+'>'+esc(T().chan[c])+'</option>').join('')+'</select>'
+  + '<button class="btn ghost" id="lostbtn" aria-pressed="'+showLost+'">'+esc(showLost ? t.hideLost : fmt(t.showLost,{n:lostN}))+'</button>'
+  + '<span class="muted small" style="margin-left:auto">'+t.hint+'</span></div>'
+  + '<div class="board" id="board"></div>';
+}
+function fillBoard(){
+  const board = document.getElementById('board'); if (!board) return;
+  board.innerHTML = (showLost ? STAGES : ORDER).map(st => {
+    const items = STUDENTS.filter(s => s.stage === st && (!pf.src || s.src === pf.src));
+    return '<div class="col" data-stage="'+st+'"><h3>'+esc(T().stage[st])+'<span class="num">'+items.length+'</span></h3>'
+     + items.map(s => '<div class="pcard stage-'+st+'" draggable="true" tabindex="0" role="button" data-id="'+s.id+'" data-go="ucenik-'+s.id+'"><span class="n">'+esc(sName(s))+'</span>'
+       + '<span class="small muted">'+esc(grade(s))+' · '+esc(prim(s).first)+'</span>'
+       + (st==='lost' ? '<span class="reason">'+esc(T().reason[s.why])+'</span>'
+          : (st==='new' && s.createdH > 24) ? '<span class="over small">'+iconOver+esc(T().ov.over24)+'</span>'
+          : '<span class="src">'+esc(T().chan[s.src])+'</span>')
+       + '</div>').join('')
+     + '</div>';
+  }).join('');
+}
+
+function viewEvents(){
+  const t = T().evt;
+  const visits = STUDENTS.filter(s => s.stage === 'visit_scheduled').sort((a,b) => a.visitAt - b.visitAt);
+  const d1 = NOW + 12*24*H, d2 = NOW + 20*24*H;
+  const dd = ts => { const d = new Date(ts); d.setHours(10,0,0,0); return d.getTime(); };
+  return phaseNote(2)
+  + '<div class="grid2"><section class="card"><header><h2>'+t.visit+'</h2><span class="pill">'+visits.length+'</span></header><ul class="list">'+visits.map(s => '<li class="vis">'+chip(s.visitAt)+'<div class="t"><button class="link" data-go="ucenik-'+s.id+'">'+esc(sName(s))+'</button><span class="small muted">'+tfmt(s.visitAt)+' · '+esc(pName(prim(s)))+' · '+esc(grade(s))+'</span></div></li>').join('')+'</ul></section>'
+  + '<section class="card"><header><h2>'+t.upcoming+'</h2></header><ul class="list">'
+  +  ev(dd(d1), t.openDay, '10:00', 23, 40) + ev(dd(d2), t.infoEve, '18:00', 14, 30)
+  + '</ul></section></div>';
+  function ev(ts, name, time, n, m){ return '<li class="vis">'+chip(ts)+'<div class="t" style="flex:1"><b>'+esc(name)+'</b><span class="small muted">'+time+' · '+fmt(t.registered,{n,m})+'</span><span class="prog sm" style="display:flex;margin-top:6px;max-width:240px"><span style="width:'+(n/m*100)+'%"></span></span></div></li>'; }
+}
+
+function campStats(){
+  return CAMPS.map(c => { const ls = bySrc(c.src), en = ls.filter(s => s.stage === 'enrolled').length; return {c, leads:ls.length, enr:en, cpl:c.spend/ls.length, cpe: en ? c.spend/en : null}; });
+}
+function viewCampaigns(){
+  const t = T().camp, st = campStats();
+  const spend = CAMPS.reduce((a,c) => a + c.spend, 0), en = enrolled().length;
+  const withEnr = st.filter(x => x.cpe).sort((a,b) => a.cpe - b.cpe), none = st.filter(x => !x.cpe);
+  const max = Math.max(...withEnr.map(x => x.cpe));
+  return phaseNote(2)
+  + '<section class="kpis"><div class="kpi"><div class="l">'+t.spend+'</div><div class="v num">'+nf(spend)+'<small>RSD</small></div><div class="h">'+t.sub+'</div></div>'
+  + kpi(t.leads, STUDENTS.length, t.sub) + kpi(t.enr, en, t.sub)
+  + '<div class="kpi"><div class="l">'+t.cpe+'</div><div class="v num">'+nf(Math.round(spend/en))+'<small>RSD</small></div><div class="h">'+t.sub+'</div></div></section>'
+  + '<div class="grid2"><section class="card scroll"><header><h2>'+t.name+'</h2></header><table class="tbl"><thead><tr><th>'+t.name+'</th><th class="r">'+t.cs+'</th><th class="r">'+t.leads+'</th><th class="r">'+t.enr+'</th><th class="r">'+t.cpeCol+'</th></tr></thead><tbody>'
+  + st.map(x => '<tr><td><b>'+esc(x.c.name)+'</b><div class="small muted">'+chanTag(x.c.src)+' · '+esc(x.c.period)+'</div></td><td class="r num">'+nf(x.c.spend)+'</td><td class="r num">'+x.leads+'</td><td class="r num">'+x.enr+'</td><td class="r num"><b>'+(x.cpe ? nf(Math.round(x.cpe)) : '—')+'</b></td></tr>').join('')
+  + '</tbody></table></section>'
+  + '<section class="card"><header><h2>'+t.chart+'</h2></header><div class="body"><div class="bars">'
+  + withEnr.map(x => '<div class="bar" tabindex="0" data-tip="'+esc(T().chan[x.c.src]+': '+money(Math.round(x.cpe))+' · '+x.enr+' '+T().an.enrolments)+'"><span class="lab">'+esc(T().chan[x.c.src])+'</span><span class="track"><span class="fill" style="width:'+(x.cpe/max*100)+'%"></span></span><span class="val num">'+nf(Math.round(x.cpe))+'</span></div>').join('')
+  + none.map(x => '<div class="bar"><span class="lab">'+esc(T().chan[x.c.src])+'</span><span class="track"></span><span class="val small muted">'+t.noEnr+'<small>'+nf(x.c.spend)+'</small></span></div>').join('')
+  + '</div><p class="small muted" style="margin:14px 0 0">'+t.note+'</p></div></section></div>';
+}
+
+let comTab = 'auto';
+function viewComms(){
+  const t = T().com;
+  const tabs = '<div class="tabs" role="tablist">'+[['auto',t.auto],['tpl',t.tpl],['bot',t.bot]].map(x => '<button role="tab" data-tab="'+x[0]+'" aria-selected="'+(comTab===x[0])+'">'+x[1]+'</button>').join('')+'</div>';
+  let body = '';
+  if (comTab === 'auto') {
+    body = '<div style="display:flex;justify-content:flex-end"><button class="btn primary" data-demo>+ '+t.newAuto+'</button></div><section class="card scroll"><table class="tbl"><thead><tr><th>'+t.auto+'</th><th>'+t.audience+'</th><th class="r">'+t.sent+'</th><th class="r">'+t.opened+'</th><th>'+t.active+'</th></tr></thead><tbody>'
+     + AUTOS.map((a,i) => { const x = a[lang]; return '<tr><td><b>'+esc(x.n)+'</b><div class="small muted">'+esc(x.tr)+' → '+esc(x.tm.charAt(0).toLowerCase()+x.tm.slice(1))+'</div></td><td class="nw">'+esc(t[a.aud])+'</td><td class="r num">'+a.sent+'</td><td class="r num">'+(a.sent?a.open+'%':'—')+'</td><td class="nw"><button class="sw" role="switch" aria-checked="'+a.on+'" aria-label="'+esc(x.n)+'" data-sw="'+i+'"></button> <span class="small muted" id="swl'+i+'">'+(a.on?t.active:t.paused)+'</span></td></tr>'; }).join('')
+     + '</tbody></table></section>';
+  } else if (comTab === 'tpl') {
+    body = '<section class="card scroll"><table class="tbl"><thead><tr><th>'+t.tplName+'</th><th>'+t.langs+'</th><th>'+t.edited+'</th></tr></thead><tbody>'+TEMPLATES.map(r => '<tr><td style="font-family:ui-monospace,Menlo,monospace">'+r[0]+'</td><td>'+r[1]+'</td><td class="muted">'+r[2].split('|')[lang==='sr'?0:1]+'</td></tr>').join('')+'</tbody></table></section>';
+  } else {
+    body = '<p class="muted" style="margin:0;max-width:70ch">'+t.botNote+'</p><div class="grid3">'+BOT.map(b => '<section class="card"><div class="body" style="display:flex;flex-direction:column;gap:10px"><div><span class="small muted">'+t.parentSays+'</span><div>'+esc(b.q)+'</div></div><div style="background:var(--mist);border-radius:8px;padding:8px 10px"><span class="small muted">'+t.botSays+'</span><div>'+esc(b.a)+'</div></div><span class="pill" style="align-self:flex-start;'+(b.to?'':'background:#e7ebee;color:#4a5866')+'">'+(b.to?t.botTo:t.botNo)+'</span></div></section>').join('')+'</div>';
+  }
+  return phaseNote(2) + tabs + body;
+}
+
+let anTab = 'ov', attrModel = 'first';
+function weeks(){
+  const out = [];
+  for (let w = 12; w >= 0; w--) { const lo = w*7*24, hi = (w+1)*7*24; out.push({w, n:STUDENTS.filter(s => s.createdH >= lo && s.createdH < hi).length, start:NOW - hi*H}); }
+  return out;
+}
+function viewAnalytics(){
+  const t = T().an;
+  const tabs = '<div class="tabs" role="tablist"><button role="tab" data-atab="ov" aria-selected="'+(anTab==='ov')+'">'+t.tabOv+'</button><button role="tab" data-atab="attr" aria-selected="'+(anTab==='attr')+'">'+t.tabAttr+' '+tag(3)+'</button></div>';
+  if (anTab === 'attr') return tabs + phaseNote(3) + viewAttr();
+  const n = STUDENTS.length, en = enrolled().length;
+  const resp = STUDENTS.filter(s => s.respH != null), avg = resp.reduce((a,s) => a + s.respH, 0) / resp.length;
+  const ws = weeks(), wmax = Math.max(...ws.map(x => x.n));
+  const srcs = Object.keys(SRC).map(k => SRC[k]).map(c => ({c, n:bySrc(c).length, e:bySrc(c).filter(s => s.stage==='enrolled').length})).sort((a,b) => b.n - a.n);
+  const smax = srcs[0].n;
+  const ramp = ['#86b6ef','#5598e7','#2a78d6','#256abf','#184f95','#0d366b'];
+  const reach = ORDER.map((st,k) => STUDENTS.filter(s => stageIdx(s) >= k).length);
+  const lostBy = {}; STUDENTS.filter(s => s.stage==='lost').forEach(s => lostBy[s.why] = (lostBy[s.why]||0) + 1);
+  const lostArr = Object.keys(lostBy).map(k => ({k, n:lostBy[k]})).sort((a,b) => b.n - a.n);
+  return tabs
+  + '<div class="muted small">'+t.period+'</div>'
+  + '<section class="kpis k3">'+kpi(t.inq, n, t.period.split(' · ')[0])+kpi(t.conv, Math.round(en/n*100)+'%', en+' / '+n+' '+t.enrolments)+kpi(t.resp, avg.toFixed(1).replace('.', lang==='sr'?',':'.'), t.respUnit)+'</section>'
+  + '<div class="grid2"><section class="card"><header><h2>'+t.week+'</h2></header><div class="body"><div class="cols" role="img" aria-label="'+t.week+'">'
+  + ws.map(x => '<div class="colw" tabindex="0" data-tip="'+esc(fmt(t.weekOf,{d:dfmt(x.start)})+': '+x.n)+'"><span class="cv num">'+x.n+'</span><span class="b" style="height:'+(x.n/ (wmax||1) *100*0.78)+'%"></span></div>').join('')
+  + '</div><div class="axis">'+ws.map((x,i) => '<span>'+(i%3===0?dfmt(x.start):'')+'</span>').join('')+'</div></div></section>'
+  + '<section class="card"><header><h2>'+t.src+'</h2></header><div class="body"><div class="bars">'
+  + srcs.map(x => '<div class="bar" tabindex="0" data-tip="'+esc(T().chan[x.c]+': '+x.n+' · '+fmt(t.convLabel,{p:Math.round(x.e/x.n*100)}))+'"><span class="lab">'+esc(T().chan[x.c])+'</span><span class="track"><span class="fill" style="width:'+(x.n/smax*100)+'%"></span></span><span class="val num">'+x.n+'<small>'+fmt(t.convLabel,{p:Math.round(x.e/x.n*100)})+'</small></span></div>').join('')
+  + '</div></div></section></div>'
+  + '<div class="grid2"><section class="card"><header><h2>'+t.funnel+'</h2></header><div class="body"><div class="bars">'
+  + ORDER.map((st,k) => '<div class="bar" tabindex="0" data-tip="'+esc(T().stage[st]+': '+reach[k]+(k?' · '+fmt(t.ofPrev,{p:Math.round(reach[k]/reach[k-1]*100)}):''))+'"><span class="lab">'+esc(T().stage[st])+'</span><span class="track"><span class="fill" style="width:'+(reach[k]/reach[0]*100)+'%;background:'+ramp[k]+'"></span></span><span class="val num">'+reach[k]+'<small>'+(k?fmt(t.ofPrev,{p:Math.round(reach[k]/reach[k-1]*100)}):'')+'</small></span></div>').join('')
+  + '</div></div></section>'
+  + '<section class="card"><header><h2>'+t.lost+'</h2></header><div class="body"><div class="bars">'
+  + lostArr.map(x => '<div class="bar"><span class="lab">'+esc(T().reason[x.k])+'</span><span class="track"><span class="fill" style="width:'+(x.n/lostArr[0].n*100)+'%"></span></span><span class="val num">'+x.n+'</span></div>').join('')
+  + '</div></div></section></div>';
+}
+function viewAttr(){
+  const t = T().an, en = enrolled();
+  const credit = {}; Object.keys(T().chan).forEach(k => credit[k] = 0);
+  en.forEach(s => {
+    const p = s.path;
+    if (attrModel === 'first') credit[p[0]] += 1;
+    else if (attrModel === 'last') credit[p[p.length-1]] += 1;
+    else p.forEach(c => credit[c] += 1/p.length);
+  });
+  const arr = Object.keys(credit).map(k => ({k, v:credit[k]})).filter(x => x.v > 0).sort((a,b) => b.v - a.v);
+  const max = arr[0].v;
+  return '<p class="muted" style="margin:0;max-width:70ch">'+t.attrNote+'</p>'
+  + '<div class="grid2"><section class="card"><header><h2>'+t.credit+'</h2><div class="seg" role="group" aria-label="'+t.model+'">'+[['first',t.mFirst],['last',t.mLast],['linear',t.mLinear]].map(x => '<button data-model="'+x[0]+'" aria-pressed="'+(attrModel===x[0])+'">'+x[1]+'</button>').join('')+'</div></header><div class="body"><div class="bars">'
+  + arr.map(x => '<div class="bar" tabindex="0" data-tip="'+esc(T().chan[x.k]+': '+x.v.toFixed(1)+' '+t.enrolments)+'"><span class="lab">'+esc(T().chan[x.k])+'</span><span class="track"><span class="fill" style="width:'+(x.v/max*100)+'%"></span></span><span class="val num">'+(Number.isInteger(x.v)?x.v:x.v.toFixed(1))+'</span></div>').join('')
+  + '</div></div></section>'
+  + '<section class="card scroll"><header><h2>'+t.path+'</h2></header><table class="tbl"><thead><tr><th>'+t.family+'</th><th>'+t.route+'</th><th class="r">'+t.days+'</th></tr></thead><tbody>'
+  + en.map(s => '<tr><td><b>'+esc(s.fam.sur)+'</b></td><td class="small">'+s.path.map(c => esc(T().chan[c])).join(' → ')+' → '+esc(T().stage.enrolled)+'</td><td class="r num">'+s.days+'</td></tr>').join('')
+  + '</tbody></table></section></div>';
+}
+
+function viewTasks(){
+  const t = T().tsk;
+  const groups = ['today','tomorrow','week'];
+  return groups.map(g => {
+    const items = ALLTASKS.filter(x => x.due === g);
+    return '<section class="card"><header><h2>'+T().due[g]+'</h2><span class="pill">'+items.length+'</span></header>'
+     + (items.length ? '<ul class="list">'+items.map((x,i) => { const key = g+i; const d = doneTasks.has(key); return '<li><div style="display:flex;gap:12px;align-items:center;min-width:0"><input class="chk" type="checkbox" data-task="'+key+'" id="tk'+key+'"'+(d?' checked':'')+' aria-label="'+esc(T().task[x.k])+'"><label for="tk'+key+'" class="t'+(d?' done':'')+'"><b>'+esc(T().task[x.k])+'</b><span class="small muted">'+esc(sName(x.s))+' · '+esc(pName(prim(x.s)))+'</span></label></div><button class="btn sm" data-go="ucenik-'+x.s.id+'">'+T().open+'</button></li>'; }).join('')+'</ul>' : '<div class="body muted">'+t.empty+'</div>')
+     + '</section>';
+  }).join('');
+}
+
+function viewSettings(){
+  const t = T().set;
+  const ints = [[t.site, true],['Google Ads',false],['Meta Lead Ads',false],['LinkedIn Lead Gen',false],['Email',false],['Google Analytics',false]];
+  return '<div class="grid2"><div class="stack">'
+  + '<section class="card"><header><h2>'+t.forms+'</h2></header><div class="body" style="display:flex;flex-direction:column;gap:10px"><div class="muted">'+t.formsText+'</div><div class="codebox">&lt;script src="https://crm.example.rs/embed.js"\n        data-form="upit-za-upis"\n        data-utm="auto"&gt;&lt;/script&gt;</div></div></section>'
+  + '<section class="card"><header><h2>'+t.integ+'</h2></header><div class="body"><div class="integ">'+ints.map(x => '<div><span>'+esc(x[0])+'</span>'+(x[1]?'<span class="pill st-enrolled">'+t.connected+'</span>':tag(2))+'</div>').join('')+'</div></div></section>'
+  + '<section class="card"><header><h2>'+t.consent+'</h2></header><div class="body"><div class="muted" style="margin-bottom:8px">'+t.consentText+'</div><div class="small"><b>v1.1</b> · '+dfmt(NOW - 40*24*H)+' <span class="pill st-enrolled" style="margin-left:6px">'+t.current+'</span><br><b>v1.0</b> · '+dfmt(NOW - 85*24*H)+'</div></div></section>'
+  + '</div><div class="stack">'
+  + '<section class="card scroll"><header><h2>'+t.users+'</h2></header><table class="tbl"><thead><tr><th>'+t.role+'</th><th>'+t.access+'</th></tr></thead><tbody>'+t.roles.map(r => '<tr><td><b>'+esc(r[0])+'</b></td><td class="small">'+esc(r[1])+'</td></tr>').join('')+'</tbody></table></section>'
+  + '<section class="card"><header><h2>'+t.audit+'</h2></header><ul class="list">'+t.auditRows.map(r => '<li><div class="t"><b style="white-space:normal">'+esc(r[2])+'</b><span class="small muted">'+esc(r[1])+'</span></div><span class="small muted" style="white-space:nowrap">'+esc(r[0])+'</span></li>').join('')+'</ul></section>'
+  + '</div></div>';
+}
+
+/* ---------- Usmeravanje i iscrtavanje ---------- */
+function route(){ const h = (location.hash || '#pregled').slice(1); return h || 'pregled'; }
+const TITLES = {pregled:'overview', upiti:'inquiries', ucenici:'students', pipeline:'pipeline', posete:'events', kampanje:'campaigns', komunikacija:'comms', analitika:'analytics', zadaci:'tasks', podesavanja:'settings'};
+function drawChrome(){
+  const t = T(), r = route();
+  document.documentElement.lang = t.htmlLang;
+  document.getElementById('demotext').textContent = t.demoText;
+  const active = r.startsWith('ucenik-') ? 'ucenici' : r;
+  const newN = STUDENTS.filter(s => s.stage === 'new').length;
+  document.getElementById('side').setAttribute('aria-label', t.navLabel);
+  document.getElementById('side').innerHTML =
+    '<div class="brand"><svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><rect width="34" height="34" rx="8" fill="#ffb81c"/><path d="M7 11.500c3.500-1.500 7-1 10 1v11c-3-2-6.500-2.500-10-1zM27 11.500c-3.500-1.500-7-1-10 1v11c3-2 6.500-2.500 10-1z" fill="#0f2d57"/></svg><div><b>Mika Antić</b><span>'+esc(t.brandSub)+' · CRM</span></div></div>'
+    + '<nav class="nav">'+NAVS.map(n => '<a href="#'+n[1]+'"'+(active===n[1]?' aria-current="page"':'')+'><svg viewBox="0 0 20 20" aria-hidden="true">'+ICON[n[0]]+'</svg><span>'+esc(t.nav[n[0]])+'</span>'+(n[0]==='inquiries'&&newN?'<span class="badge">'+newN+'</span>':'')+(n[2]>1?'<span class="ph">'+esc(t.phase[n[2]])+'</span>':'')+'</a>').join('')+'</nav>'
+    + '<div class="me"><div class="avatar" aria-hidden="true">ID</div><div><b style="color:#fff">Ivana Đorđević</b><small>'+esc(t.role)+'</small></div></div>';
+  const ps = r.startsWith('ucenik-') ? STUDENTS.find(x => x.id === r.slice(7)) : null;
+  const title = ps ? sName(ps) : t.nav[TITLES[r] || 'overview'];
+  document.getElementById('top').innerHTML =
+    '<div><div class="crumb">Mika Antić · '+esc(ps ? t.nav.students : t.brandSub)+'</div><h1>'+esc(title)+'</h1></div>'
+    + '<div class="lang" role="group" aria-label="'+esc(t.langLabel)+'"><button data-lang="sr" aria-pressed="'+(lang==='sr')+'">RS</button><button data-lang="en" aria-pressed="'+(lang==='en')+'">ENG</button></div>';
+  document.title = (lang === 'sr' ? 'Demo CRM za upise' : 'Admissions CRM demo');
+}
+function render(keepScroll){
+  drawChrome();
+  const r = route(), v = document.getElementById('view');
+  let html = '';
+  if (r.startsWith('ucenik-')) html = viewProfile(r.slice(7));
+  else html = ({pregled:viewOverview, upiti:viewInquiries, ucenici:viewStudents, pipeline:viewPipeline, posete:viewEvents, kampanje:viewCampaigns, komunikacija:viewComms, analitika:viewAnalytics, zadaci:viewTasks, podesavanja:viewSettings}[r] || viewOverview)();
+  v.innerHTML = html;
+  if (r === 'ucenici') fillStudents();
+  if (r === 'pipeline') fillBoard();
+  if (!keepScroll) window.scrollTo(0, 0);
+}
+function setStage(id, st, why){
+  const s = STUDENTS.find(x => x.id === id); if (!s) return;
+  s.stage = st; if (st === 'lost') { s.why = why || 'no_reply'; s.lostAfter = s.lostAfter || 'contacted'; }
+  toast(fmt(T().pipe.moved, {s:T().stage[st]}));
+}
+function askReason(id, done){
+  const t = T();
+  const m = document.getElementById('modal');
+  m.innerHTML = '<div class="modal-bg"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="mt"><h2 id="mt">'+esc(t.pipe.lostTitle)+'</h2><div class="opts">'+Object.keys(t.reason).map(k => '<button class="btn" data-reason="'+k+'">'+esc(t.reason[k])+'</button>').join('')+'</div><button class="btn ghost" data-close>'+t.cancel+'</button></div></div>';
+  m.querySelector('button').focus();
+  m.onclick = e => {
+    const b = e.target.closest('button');
+    if (b && b.dataset.reason) { m.innerHTML = ''; done(b.dataset.reason); }
+    else if ((b && b.hasAttribute('data-close')) || e.target.classList.contains('modal-bg')) { m.innerHTML = ''; render(true); }
+  };
+}
+
+/* ---------- Događaji ---------- */
+document.addEventListener('click', e => {
+  const lb = e.target.closest('[data-lang]');
+  if (lb) { lang = lb.dataset.lang; try { localStorage.setItem('crm-demo-lang', lang); } catch(x) {} render(true); return; }
+  if (e.target.closest('[data-demo]')) { demoAct(); return; }
+  if (e.target.closest('#lostbtn')) { showLost = !showLost; render(true); return; }
+  const tab = e.target.closest('[data-tab]'); if (tab) { comTab = tab.dataset.tab; render(true); return; }
+  const it = e.target.closest('[data-itab]'); if (it) { inqTab = it.dataset.itab; render(true); return; }
+  const at = e.target.closest('[data-atab]'); if (at) { anTab = at.dataset.atab; render(true); return; }
+  const md = e.target.closest('[data-model]'); if (md) { attrModel = md.dataset.model; render(true); return; }
+  const sw = e.target.closest('[data-sw]');
+  if (sw) { const i = +sw.dataset.sw; AUTOS[i].on = !AUTOS[i].on; sw.setAttribute('aria-checked', AUTOS[i].on); document.getElementById('swl'+i).textContent = AUTOS[i].on ? T().com.active : T().com.paused; return; }
+  const go = e.target.closest('[data-go]');
+  if (go && !e.target.closest('select,input')) { location.hash = '#' + go.dataset.go; return; }
+});
+document.addEventListener('keydown', e => {
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.classList && e.target.classList.contains('pcard')) { e.preventDefault(); location.hash = '#ucenik-' + e.target.dataset.id; }
+});
+document.addEventListener('change', e => {
+  const el = e.target;
+  if (el.id === 'stsel') { const id = route().slice(7); if (el.value === 'lost') askReason(id, why => { setStage(id, 'lost', why); render(true); }); else { setStage(id, el.value); render(true); } }
+  else if (el.id === 'fs') { flt.stage = el.value; fillStudents(); }
+  else if (el.id === 'psrc') { pf.src = el.value; fillBoard(); }
+  else if (el.id === 'pown') { pf.own = el.value; fillBoard(); }
+  else if (el.dataset && el.dataset.task) { if (el.checked) doneTasks.add(el.dataset.task); else doneTasks.delete(el.dataset.task); el.closest('li').querySelector('label').classList.toggle('done', el.checked); }
+});
+document.addEventListener('input', e => { if (e.target.id === 'fq') { flt.q = e.target.value; fillStudents(); } });
+
+/* prevlačenje kartica */
+let dragId = null;
+document.addEventListener('dragstart', e => { const c = e.target.closest && e.target.closest('.pcard'); if (!c) return; dragId = c.dataset.id; c.classList.add('dragging'); try { e.dataTransfer.setData('text/plain', dragId); e.dataTransfer.effectAllowed = 'move'; } catch(x) {} });
+document.addEventListener('dragend', e => { const c = e.target.closest && e.target.closest('.pcard'); if (c) c.classList.remove('dragging'); document.querySelectorAll('.col.over-drop').forEach(x => x.classList.remove('over-drop')); });
+document.addEventListener('dragover', e => { const col = e.target.closest && e.target.closest('.col'); if (col && dragId) { e.preventDefault(); document.querySelectorAll('.col.over-drop').forEach(x => x !== col && x.classList.remove('over-drop')); col.classList.add('over-drop'); } });
+document.addEventListener('drop', e => {
+  const col = e.target.closest && e.target.closest('.col'); if (!col || !dragId) return; e.preventDefault();
+  const id = dragId, st = col.dataset.stage; dragId = null;
+  const s = STUDENTS.find(x => x.id === id); if (!s || s.stage === st) { fillBoard(); return; }
+  if (st === 'lost') askReason(id, why => { setStage(id, 'lost', why); fillBoard(); }); else { setStage(id, st); fillBoard(); }
+});
+
+/* tooltip */
+const tip = document.getElementById('tip');
+function showTip(el, x, y){ tip.textContent = el.getAttribute('data-tip'); tip.classList.add('on'); const w = tip.offsetWidth; tip.style.left = Math.min(window.innerWidth - w - 8, x + 12) + 'px'; tip.style.top = (y + 14) + 'px'; }
+document.addEventListener('mousemove', e => { const el = e.target.closest && e.target.closest('[data-tip]'); if (el) showTip(el, e.clientX, e.clientY); else tip.classList.remove('on'); });
+document.addEventListener('focusin', e => { const el = e.target.closest && e.target.closest('[data-tip]'); if (el) { const r = el.getBoundingClientRect(); showTip(el, r.left + 20, r.top - 36); } });
+document.addEventListener('focusout', () => tip.classList.remove('on'));
+
+window.addEventListener('hashchange', () => render(false));
+render(true);
+})();
+</script>
+</body>
+</html>
